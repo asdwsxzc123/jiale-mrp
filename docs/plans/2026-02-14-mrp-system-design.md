@@ -255,7 +255,7 @@ jiale_erp/
 | status            | Enum    | DRAFT/APPROVED/CANCELLED/TRANSFERRED    |
 | e_invoice_status  | String  | 电子发票状态                            |
 | is_transferable   | Boolean | 是否可转单                              |
-| is_cancelled      | Boolean | 是否取消                                |
+| ~~is_cancelled~~  | 已移除  | 使用 status=CANCELLED 代替，避免状态不一致 |
 | ref_doc_id        | UUID    | 来源单据 (转单时关联)                    |
 | created_by        | UUID    | 创建人                                  |
 | created_at        | DateTime| 创建时间                                |
@@ -494,7 +494,7 @@ Quotation → Sales Order → Delivery Order → Invoice
   报价单      销售订单        出货单          发票
                                 ↓               ↓
                            成品出库          客户付款
-                           (扣减库存)
+                       (审批出货单时扣减库存)
 
 【溯源链路】
 扫描成品 QR 码 → 查看成品信息 + 生产信息 + 原材料来源

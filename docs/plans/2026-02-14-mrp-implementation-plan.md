@@ -177,16 +177,13 @@ version: '3.8'
 services:
   db:
     image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: jiale
-      POSTGRES_PASSWORD: jiale_erp_2026
-      POSTGRES_DB: jiale_erp
+    env_file: .env
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U jiale"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -197,9 +194,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
-    environment:
-      DATABASE_URL: postgresql://jiale:jiale_erp_2026@db:5432/jiale_erp
-      JWT_SECRET: jiale-erp-jwt-secret-change-in-production
+    env_file: .env
     depends_on:
       db:
         condition: service_healthy
@@ -272,13 +267,34 @@ server {
 }
 ```
 
-**Step 4: 创建 .env 示例**
+**Step 4: 创建 .env.example（仅占位符，不含真实密码）和 .env（不提交到 git）**
 
-Create: `packages/server/.env.example`
+Create: `.env.example`（提交到 git）
 ```
-DATABASE_URL=postgresql://jiale:jiale_erp_2026@localhost:5432/jiale_erp
-JWT_SECRET=jiale-erp-jwt-secret-change-in-production
+# PostgreSQL
+POSTGRES_USER=jiale
+POSTGRES_PASSWORD=<CHANGE_ME>
+POSTGRES_DB=jiale_erp
+
+# Backend
+DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+JWT_SECRET=<CHANGE_ME_TO_RANDOM_64_CHAR_STRING>
+
+# Seed
+ADMIN_INIT_PASSWORD=<CHANGE_ME>
 ```
+
+Create: `.env`（已在 .gitignore 中，不会提交）
+```
+POSTGRES_USER=jiale
+POSTGRES_PASSWORD=<生成一个随机强密码>
+POSTGRES_DB=jiale_erp
+DATABASE_URL=postgresql://jiale:<同上密码>@localhost:5432/jiale_erp
+JWT_SECRET=<运行 openssl rand -hex 32 生成>
+ADMIN_INIT_PASSWORD=<设置一个强密码>
+```
+
+> **安全规则：`.env` 文件已在 `.gitignore` 中，绝不提交到版本库。只提交 `.env.example`。**
 
 **Step 5: 验证 Docker Compose 构建**
 
@@ -298,10 +314,16 @@ git commit -m "chore: add Docker Compose config for full stack deployment"
 
 ## Phase 2: 数据库 Schema 定义
 
+> **重要：Phase 2 的 Task 5-10 全部写入同一个 `schema.prisma` 文件，但不要在中间步骤执行迁移。**
+> **所有模型写完后，在 Task 10 的最后一步统一执行一次 `prisma migrate dev`。**
+> **这是因为 Prisma 的关系字段要求两端模型同时存在，中间迁移会因为前向引用而失败。**
+
 ### Task 5: Prisma Schema - 用户与权限
 
 **Files:**
 - Modify: `packages/server/prisma/schema.prisma`
+
+**注意：本 Task 只写文件，不执行迁移。迁移统一在 Task 10 最后执行。**
 
 **Step 1: 编写 User 模型**
 
@@ -338,19 +360,13 @@ model User {
 }
 ```
 
-**Step 2: 运行迁移**
+**Step 2: 不要执行迁移，只保存文件。继续 Task 6。**
 
-```bash
-cd packages/server
-npx prisma migrate dev --name init-users
-```
-Expected: 迁移成功，生成 users 表
-
-**Step 3: 提交**
+**Step 3: 提交 schema 进度**
 
 ```bash
 git add packages/server/prisma/
-git commit -m "feat: add User schema with role-based access"
+git commit -m "feat(schema): add User model with role-based access"
 ```
 
 ---
@@ -481,17 +497,13 @@ model SupplierBranch {
 }
 ```
 
-**Step 2: 运行迁移**
+**Step 2: 不要执行迁移，只保存文件。继续 Task 7。**
 
-```bash
-npx prisma migrate dev --name add-customer-supplier
-```
-
-**Step 3: 提交**
+**Step 3: 提交 schema 进度**
 
 ```bash
 git add packages/server/prisma/
-git commit -m "feat: add Customer and Supplier schemas with branches"
+git commit -m "feat(schema): add Customer and Supplier models with branches"
 ```
 
 ---
@@ -596,6 +608,8 @@ enum StockTransactionType {
   ISSUE
   ADJUSTMENT
   TRANSFER
+  ASSEMBLY      // 组装（多个原材料 → 一个成品）
+  DISASSEMBLY   // 拆解（一个成品 → 多个原材料）
 }
 
 model StockTransaction {
@@ -630,17 +644,13 @@ model StockTransactionItem {
 }
 ```
 
-**Step 2: 运行迁移**
+**Step 2: 不要执行迁移，只保存文件。继续 Task 8。**
 
-```bash
-npx prisma migrate dev --name add-stock-models
-```
-
-**Step 3: 提交**
+**Step 3: 提交 schema 进度**
 
 ```bash
 git add packages/server/prisma/
-git commit -m "feat: add Stock, StockItem, StockBalance, StockTransaction schemas"
+git commit -m "feat(schema): add Stock, StockItem, StockBalance, StockTransaction models"
 ```
 
 ---
@@ -693,7 +703,7 @@ model SalesDocument {
   status          DocumentStatus    @default(DRAFT)
   eInvoiceStatus  String?           @map("e_invoice_status")
   isTransferable  Boolean           @default(true) @map("is_transferable")
-  isCancelled     Boolean           @default(false) @map("is_cancelled")
+  // isCancelled 已移除：使用 status=CANCELLED 即可，避免状态不一致
   refDocId        String?           @map("ref_doc_id")
   createdBy       String?           @map("created_by")
   createdAt       DateTime          @default(now()) @map("created_at")
@@ -734,6 +744,7 @@ enum PurchaseDocumentType {
   GOODS_RECEIVED
   INVOICE
   CASH_PURCHASE
+  RETURNED          // 采购退货
 }
 
 model PurchaseDocument {
@@ -798,17 +809,13 @@ model PurchaseDocumentItem {
 }
 ```
 
-**Step 2: 运行迁移**
+**Step 2: 不要执行迁移，只保存文件。继续 Task 9。**
 
-```bash
-npx prisma migrate dev --name add-sales-purchase-documents
-```
-
-**Step 3: 提交**
+**Step 3: 提交 schema 进度**
 
 ```bash
 git add packages/server/prisma/
-git commit -m "feat: add SalesDocument and PurchaseDocument schemas"
+git commit -m "feat(schema): add SalesDocument and PurchaseDocument models"
 ```
 
 ---
@@ -988,17 +995,13 @@ model SupplierRefund {
 }
 ```
 
-**Step 2: 运行迁移**
+**Step 2: 不要执行迁移，只保存文件。继续 Task 10。**
 
-```bash
-npx prisma migrate dev --name add-financial-documents
-```
-
-**Step 3: 提交**
+**Step 3: 提交 schema 进度**
 
 ```bash
 git add packages/server/prisma/
-git commit -m "feat: add Customer and Supplier financial document schemas"
+git commit -m "feat(schema): add Customer and Supplier financial document models"
 ```
 
 ---
@@ -1044,6 +1047,7 @@ model IncomingInspection {
   createdAt             DateTime         @default(now()) @map("created_at")
 
   supplier              Supplier         @relation(fields: [supplierId], references: [id])
+  rawMaterialBatches    RawMaterialBatch[] // 反向关系：检验合格后生成的原材料批次
 
   @@map("incoming_inspections")
 }
@@ -1151,22 +1155,27 @@ enum BatchStatus {
 }
 
 model RawMaterialBatch {
-  id                  String      @id @default(uuid())
-  traceabilityCode    String      @unique @map("traceability_code") // RM-YYYYMMDD-XXX
-  itemId              String      @map("item_id")
-  purchaseDocId       String?     @map("purchase_doc_id")
-  purchaseDocItemId   String?     @map("purchase_doc_item_id")
-  inspectionId        String?     @map("inspection_id")
-  supplierId          String?     @map("supplier_id")
-  weight              Decimal     @db.Decimal(15, 2)
-  weightUnit          String      @default("KG") @map("weight_unit")
-  warehouseLocationId String?     @map("warehouse_location_id")
-  receivedDate        DateTime    @map("received_date") @db.Date
-  remainingWeight     Decimal     @db.Decimal(15, 2) @map("remaining_weight")
-  status              BatchStatus @default(IN_STOCK)
-  createdAt           DateTime    @default(now()) @map("created_at")
+  id                  String           @id @default(uuid())
+  traceabilityCode    String           @unique @map("traceability_code") // RM-YYYYMMDD-XXX
+  itemId              String           @map("item_id")
+  purchaseDocId       String?          @map("purchase_doc_id")
+  purchaseDocItemId   String?          @map("purchase_doc_item_id")
+  inspectionId        String?          @map("inspection_id")
+  supplierId          String?          @map("supplier_id")
+  weight              Decimal          @db.Decimal(15, 2)
+  weightUnit          String           @default("KG") @map("weight_unit")
+  warehouseLocationId String?          @map("warehouse_location_id")
+  receivedDate        DateTime         @map("received_date") @db.Date
+  remainingWeight     Decimal          @db.Decimal(15, 2) @map("remaining_weight")
+  status              BatchStatus      @default(IN_STOCK)
+  createdAt           DateTime         @default(now()) @map("created_at")
 
-  supplier            Supplier?   @relation(fields: [supplierId], references: [id])
+  // 外键关系（保证数据完整性，支持 Prisma include 联查）
+  item                StockItem        @relation(fields: [itemId], references: [id])
+  purchaseDoc         PurchaseDocument? @relation(fields: [purchaseDocId], references: [id])
+  inspection          IncomingInspection? @relation(fields: [inspectionId], references: [id])
+  supplier            Supplier?        @relation(fields: [supplierId], references: [id])
+  warehouseLocation   StockLocation?   @relation("RawMaterialLocation", fields: [warehouseLocationId], references: [id])
 
   @@map("raw_material_batches")
 }
@@ -1193,7 +1202,10 @@ model FinishedProduct {
   status              FinishedProductStatus @default(IN_STOCK)
   createdAt           DateTime              @default(now()) @map("created_at")
 
+  // 外键关系
+  item                StockItem             @relation(fields: [itemId], references: [id])
   jobOrder            JobOrder?             @relation(fields: [jobOrderId], references: [id])
+  warehouseLocation   StockLocation?        @relation("FinishedProductLocation", fields: [warehouseLocationId], references: [id])
   materials           FinishedProductMaterial[]
 
   @@map("finished_products")
@@ -1247,17 +1259,54 @@ model DocNumberSequence {
 }
 ```
 
-**Step 6: 运行迁移**
+**Step 5.5: 回到之前的模型补充反向关系字段**
 
-```bash
-npx prisma migrate dev --name add-inspection-bom-production-traceability
+在 StockItem 模型中添加:
+```prisma
+  rawMaterialBatches  RawMaterialBatch[]
+  finishedProducts    FinishedProduct[]
 ```
 
-**Step 7: 提交**
+在 StockLocation 模型中添加:
+```prisma
+  rawMaterialBatches  RawMaterialBatch[] @relation("RawMaterialLocation")
+  finishedProducts    FinishedProduct[]  @relation("FinishedProductLocation")
+```
+
+在 PurchaseDocument 模型中添加:
+```prisma
+  rawMaterialBatches  RawMaterialBatch[]
+```
+
+在 IncomingInspection 模型中已添加（Step 1 已含）:
+```prisma
+  rawMaterialBatches  RawMaterialBatch[]
+```
+
+> **这一步确保所有 Prisma 关系都有双向定义，迁移才能成功。**
+
+**Step 6: 统一执行迁移（Phase 2 唯一一次迁移）**
+
+此时 schema.prisma 包含了 Task 5-10 的所有模型，所有关系字段都有对应模型，可以安全迁移。
+
+```bash
+cd packages/server
+npx prisma migrate dev --name init-all-models
+```
+Expected: 迁移成功，一次性生成所有表
+
+**Step 7: 验证迁移**
+
+```bash
+npx prisma studio
+```
+Expected: 打开 Prisma Studio，能看到所有表
+
+**Step 8: 提交**
 
 ```bash
 git add packages/server/prisma/
-git commit -m "feat: add Inspection, BOM, Production, Traceability schemas"
+git commit -m "feat(schema): add Inspection, BOM, Production, Traceability models and run initial migration"
 ```
 
 ---
@@ -1276,8 +1325,12 @@ import * as bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  // 创建默认管理员用户
-  const adminPassword = await bcrypt.hash('admin123', 10);
+  // 创建默认管理员用户（密码从环境变量读取，不硬编码）
+  const adminPwd = process.env.ADMIN_INIT_PASSWORD;
+  if (!adminPwd) {
+    throw new Error('ADMIN_INIT_PASSWORD 环境变量未设置，请在 .env 中配置');
+  }
+  const adminPassword = await bcrypt.hash(adminPwd, 10);
   await prisma.user.upsert({
     where: { username: 'admin' },
     update: {},
@@ -1550,9 +1603,10 @@ git commit -m "feat: add database seed data with default admin, currencies, tax 
 - 客户退款: `/api/sales/refunds`
 
 **关键逻辑:**
-- 创建发票时自动扣减库存
+- **出货单(Delivery Order)审批时扣减库存**（不是发票，发票只做财务记录）
 - 单据转换自动复制行项数据
 - 付款时自动更新客户应收余额
+- 发票创建时更新客户应收余额（outstanding_amount）
 
 **提交:** `feat: add Sales module with document workflow and financial operations`
 
@@ -1562,12 +1616,17 @@ git commit -m "feat: add database seed data with default admin, currencies, tax 
 
 **Files:** 镜像 Sales 模块，路径 `/api/purchase/`
 
+**额外 API:**
+- 采购退货: `POST /api/purchase/documents/:id/return` (从收货单或发票创建退货单)
+- 退货时自动回退库存
+
 **额外逻辑:**
 - 收货时采购行项记录 actual_weight 和 actual_arrival_date
 - 收货后自动触发来料检验创建
 - 采购发票关联供应商付款
+- 退货单创建时反向扣减库存余额
 
-**提交:** `feat: add Purchase module with weight tracking and goods receiving`
+**提交:** `feat: add Purchase module with weight tracking, goods receiving, and returns`
 
 ---
 
@@ -1611,6 +1670,8 @@ git commit -m "feat: add database seed data with default admin, currencies, tax 
 - 领料: `POST /api/production/job-orders/:id/issue-material`
 - 产出登记: `POST /api/production/job-orders/:id/output`
 - 完工: `POST /api/production/job-orders/:id/complete`
+- 组装: `POST /api/production/assembly` (多个原材料 → 一个成品，走 StockTransaction ASSEMBLY)
+- 拆解: `POST /api/production/disassembly` (一个成品 → 多个原材料，走 StockTransaction DISASSEMBLY)
 
 **关键逻辑:**
 - BOM 展开用 PostgreSQL WITH RECURSIVE 递归查询
