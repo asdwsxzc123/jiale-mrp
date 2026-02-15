@@ -49,9 +49,6 @@ COPY --from=server-builder /app/packages/server/prisma ./packages/server/prisma
 COPY --from=server-builder /app/packages/server/prisma.config.ts ./packages/server/prisma.config.ts
 RUN cd packages/server && npx prisma generate
 
-# 裁剪为生产依赖，减小镜像体积（CI=true 避免 TTY 交互提示）
-RUN CI=true pnpm prune --prod
-
 # 拷贝后端编译产物
 COPY --from=server-builder /app/packages/server/dist ./packages/server/dist
 
