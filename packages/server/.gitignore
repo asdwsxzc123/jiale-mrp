@@ -3,3 +3,6 @@ node_modules
 .env
 
 /generated/prisma
+
+# 前端构建产物（由 pnpm build 从 web/dist 拷贝）
+/public

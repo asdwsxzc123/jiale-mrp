@@ -56,5 +56,10 @@ COPY --from=server-builder /app/packages/server/dist ./packages/server/dist
 COPY --from=web-builder /app/packages/web/dist ./packages/server/public
 
 WORKDIR /app/packages/server
+
+# 拷贝 entrypoint 脚本（启动时自动同步表结构 + 首次初始化 seed）
+COPY packages/server/docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
+
 EXPOSE 3100
-CMD ["node", "dist/main.js"]
+ENTRYPOINT ["./docker-entrypoint.sh"]

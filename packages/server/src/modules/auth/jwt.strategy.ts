@@ -25,19 +25,28 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   /** 验证 JWT payload 并返回用户信息 */
   async validate(payload: JwtPayload) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
-    });
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+      });
 
-    if (!user || !user.isActive) {
-      throw new UnauthorizedException('用户不存在或已禁用');
+      if (!user || !user.isActive) {
+        throw new UnauthorizedException('用户不存在或已禁用');
+      }
+
+      return {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        role: user.role,
+      };
+    } catch (error) {
+      // 已经是 UnauthorizedException 的直接抛出
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      // 数据库异常（表不存在、连接失败等）统一返回 401
+      throw new UnauthorizedException('认证验证失败');
     }
-
-    return {
-      id: user.id,
-      username: user.username,
-      name: user.name,
-      role: user.role,
-    };
   }
 }

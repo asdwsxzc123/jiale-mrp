@@ -5,7 +5,7 @@
     "dev:server": "pnpm --filter server dev",
     "dev:web": "pnpm --filter web dev",
     "dev": "concurrently \"pnpm run dev:server\" \"pnpm run dev:web\"",
-    "build": "pnpm --filter server build && pnpm --filter web build"
+    "build": "pnpm --filter server build && pnpm --filter web build && cp -r packages/web/dist packages/server/public"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

@@ -164,3 +164,25 @@ cd packages/server && npx prisma studio
 ## License
 
 Private
+
+## 删除容器和启动部分容器
+
+```
+       #直接指定服务名启动 db 就行
+docker compose up -d db
+
+⏺ 因为 docker-compose.yml 里数据库用了 named volume：
+
+  volumes:
+    - pgdata:/var/lib/postgresql/data
+
+  删除容器不会删除 volume，数据会一直保留。
+
+  # 查看 volume
+  docker volume ls | grep pgdata
+
+  # 要彻底清除数据，需要显式删除 volume
+  docker compose down -v
+
+
+```
