@@ -1,6 +1,6 @@
 import {
-  Controller, Get, Post, Delete,
-  Body, Param, Query, UseGuards,
+  Controller, Get, Post, Put, Delete,
+  Body, Param, Query, UseGuards, NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard.js';
@@ -90,6 +90,37 @@ export class SupplierPaymentController {
       });
 
       return payment;
+    });
+  }
+
+  /** 更新供应商付款记录 */
+  @Put(':id')
+  @ApiOperation({ summary: '更新供应商付款记录' })
+  async update(@Param('id') id: string, @Body() dto: Partial<CreateSupplierPaymentDto>) {
+    const existing = await this.prisma.supplierPayment.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('付款记录不存在');
+
+    return this.prisma.$transaction(async (tx) => {
+      // 如果金额变化，调整供应商应付余额
+      if (dto.amount !== undefined && dto.amount !== Number(existing.amount)) {
+        const diff = Number(existing.amount) - dto.amount;
+        await tx.supplier.update({
+          where: { id: existing.supplierId },
+          data: { outstandingAmount: { increment: diff } },
+        });
+      }
+
+      const updateData: any = { ...dto };
+      if (updateData.date) updateData.date = new Date(updateData.date);
+      if (updateData.currency) updateData.currency = updateData.currency as any;
+      // supplierId 不允许修改
+      delete updateData.supplierId;
+
+      return tx.supplierPayment.update({
+        where: { id },
+        data: updateData,
+        include: { supplier: { select: { code: true, companyName: true } } },
+      });
     });
   }
 

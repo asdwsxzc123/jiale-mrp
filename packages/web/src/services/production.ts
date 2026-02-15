@@ -27,7 +27,7 @@ export interface BOM {
 }
 
 export async function getBOMs(params?: Record<string, unknown>) {
-  const res = await api.get('/boms', { params });
+  const res = await api.get('/production/boms', { params });
   return res.data;
 }
 
@@ -37,7 +37,7 @@ export async function getBOM(id: string) {
 }
 
 export async function createBOM(data: Partial<BOM>) {
-  const res = await api.post('/boms', data);
+  const res = await api.post('/production/boms', data);
   return res.data;
 }
 
@@ -90,7 +90,7 @@ export interface JobOrder {
 }
 
 export async function getJobOrders(params?: Record<string, unknown>) {
-  const res = await api.get('/job-orders', { params });
+  const res = await api.get('/production/job-orders', { params });
   return res.data;
 }
 
@@ -100,7 +100,7 @@ export async function getJobOrder(id: string) {
 }
 
 export async function createJobOrder(data: Partial<JobOrder>) {
-  const res = await api.post('/job-orders', data);
+  const res = await api.post('/production/job-orders', data);
   return res.data;
 }
 
@@ -153,7 +153,7 @@ export interface FinishedProduct {
 }
 
 export async function getFinishedProducts(params?: Record<string, unknown>) {
-  const res = await api.get('/finished-products', { params });
+  const res = await api.get('/production/finished-products', { params });
   return res.data;
 }
 

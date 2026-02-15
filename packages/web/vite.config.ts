@@ -4,4 +4,14 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  server: {
+    port: 5188, // 自定义开发端口，避免与其他项目冲突
+    proxy: {
+      // 将 /api 请求代理到后端服务
+      '/api': {
+        target: 'http://localhost:3100',
+        changeOrigin: true,
+      },
+    },
+  },
 })

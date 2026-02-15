@@ -14,12 +14,12 @@ export interface Currency {
 }
 
 export async function getCurrencies() {
-  const res = await api.get('/currencies');
+  const res = await api.get('/settings/currencies');
   return res.data;
 }
 
 export async function createCurrency(data: Partial<Currency>) {
-  const res = await api.post('/currencies', data);
+  const res = await api.post('/settings/currencies', data);
   return res.data;
 }
 
@@ -42,12 +42,12 @@ export interface TaxCode {
 }
 
 export async function getTaxCodes() {
-  const res = await api.get('/tax-codes');
+  const res = await api.get('/settings/tax-codes');
   return res.data;
 }
 
 export async function createTaxCode(data: Partial<TaxCode>) {
-  const res = await api.post('/tax-codes', data);
+  const res = await api.post('/settings/tax-codes', data);
   return res.data;
 }
 
@@ -72,12 +72,12 @@ export interface User {
 }
 
 export async function getUsers(params?: Record<string, unknown>) {
-  const res = await api.get('/users', { params });
+  const res = await api.get('/settings/users', { params });
   return res.data;
 }
 
 export async function createUser(data: { username: string; password: string; name: string; role: string }) {
-  const res = await api.post('/users', data);
+  const res = await api.post('/settings/users', data);
   return res.data;
 }
 

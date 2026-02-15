@@ -60,7 +60,7 @@ export interface PurchaseDocument {
 
 /** 查询采购单据列表 */
 export async function getPurchaseDocuments(params?: Record<string, unknown>) {
-  const res = await api.get('/purchase-documents', { params });
+  const res = await api.get('/purchase/documents', { params });
   return res.data;
 }
 
@@ -72,7 +72,7 @@ export async function getPurchaseDocument(id: string) {
 
 /** 创建采购单据 */
 export async function createPurchaseDocument(data: Partial<PurchaseDocument>) {
-  const res = await api.post('/purchase-documents', data);
+  const res = await api.post('/purchase/documents', data);
   return res.data;
 }
 
@@ -104,7 +104,7 @@ export interface SupplierPayment {
 }
 
 export async function getSupplierPayments(params?: Record<string, unknown>) {
-  const res = await api.get('/supplier-payments', { params });
+  const res = await api.get('/purchase/payments', { params });
   return res.data;
 }
 
@@ -114,7 +114,7 @@ export async function getSupplierPayment(id: string) {
 }
 
 export async function createSupplierPayment(data: Partial<SupplierPayment>) {
-  const res = await api.post('/supplier-payments', data);
+  const res = await api.post('/purchase/payments', data);
   return res.data;
 }
 

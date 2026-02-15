@@ -9,5 +9,8 @@
   },
   "devDependencies": {
     "concurrently": "^9.0.0"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.4.0"
   }
 }

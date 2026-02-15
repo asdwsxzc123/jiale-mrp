@@ -39,7 +39,7 @@ export interface StockItem {
 }
 
 export async function getStockItems(params?: Record<string, unknown>) {
-  const res = await api.get('/stock-items', { params });
+  const res = await api.get('/stock/items', { params });
   return res.data;
 }
 
@@ -49,7 +49,7 @@ export async function getStockItem(id: string) {
 }
 
 export async function createStockItem(data: Partial<StockItem>) {
-  const res = await api.post('/stock-items', data);
+  const res = await api.post('/stock/items', data);
   return res.data;
 }
 
@@ -71,12 +71,12 @@ export interface StockGroup {
 }
 
 export async function getStockGroups(params?: Record<string, unknown>) {
-  const res = await api.get('/stock-groups', { params });
+  const res = await api.get('/stock/groups', { params });
   return res.data;
 }
 
 export async function createStockGroup(data: Partial<StockGroup>) {
-  const res = await api.post('/stock-groups', data);
+  const res = await api.post('/stock/groups', data);
   return res.data;
 }
 
@@ -98,12 +98,12 @@ export interface StockCategory {
 }
 
 export async function getStockCategories(params?: Record<string, unknown>) {
-  const res = await api.get('/stock-categories', { params });
+  const res = await api.get('/stock/categories', { params });
   return res.data;
 }
 
 export async function createStockCategory(data: Partial<StockCategory>) {
-  const res = await api.post('/stock-categories', data);
+  const res = await api.post('/stock/categories', data);
   return res.data;
 }
 
@@ -125,12 +125,12 @@ export interface StockLocation {
 }
 
 export async function getStockLocations(params?: Record<string, unknown>) {
-  const res = await api.get('/stock-locations', { params });
+  const res = await api.get('/stock/locations', { params });
   return res.data;
 }
 
 export async function createStockLocation(data: Partial<StockLocation>) {
-  const res = await api.post('/stock-locations', data);
+  const res = await api.post('/stock/locations', data);
   return res.data;
 }
 
@@ -156,7 +156,7 @@ export interface StockBalance {
 }
 
 export async function getStockBalances(params?: Record<string, unknown>) {
-  const res = await api.get('/stock-balances', { params });
+  const res = await api.get('/stock/balances', { params });
   return res.data;
 }
 
@@ -185,7 +185,7 @@ export interface StockTransaction {
 }
 
 export async function getStockTransactions(params?: Record<string, unknown>) {
-  const res = await api.get('/stock-transactions', { params });
+  const res = await api.get('/stock/transactions', { params });
   return res.data;
 }
 
@@ -195,6 +195,6 @@ export async function getStockTransaction(id: string) {
 }
 
 export async function createStockTransaction(data: Partial<StockTransaction>) {
-  const res = await api.post('/stock-transactions', data);
+  const res = await api.post('/stock/transactions', data);
   return res.data;
 }

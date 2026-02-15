@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Put,
+  Controller, Get, Post, Put, Delete,
   Body, Param, Query, UseGuards, Request,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
@@ -58,6 +58,13 @@ export class SalesDocumentController {
   @ApiOperation({ summary: '更新销售单据（仅 DRAFT 状态）' })
   async update(@Param('id') id: string, @Body() dto: CreateSalesDocumentDto) {
     return this.salesDocumentService.update(id, dto);
+  }
+
+  /** 删除销售单据（仅 DRAFT 状态可删除） */
+  @Delete(':id')
+  @ApiOperation({ summary: '删除销售单据（仅 DRAFT 状态）' })
+  async remove(@Param('id') id: string) {
+    return this.salesDocumentService.remove(id);
   }
 
   /** 单据转换 */

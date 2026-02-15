@@ -188,6 +188,19 @@ export class PurchaseDocumentService {
     });
   }
 
+  /** 删除采购单据（仅 DRAFT 状态） */
+  async remove(id: string) {
+    const doc = await this.findOne(id);
+    if (doc.status !== 'DRAFT') {
+      throw new BadRequestException('只有草稿状态的单据可以删除');
+    }
+
+    // 先删除明细行，再删除主单据
+    await this.prisma.purchaseDocumentItem.deleteMany({ where: { documentId: id } });
+    await this.prisma.purchaseDocument.delete({ where: { id } });
+    return { success: true };
+  }
+
   /**
    * 单据转换
    * 收货时自动创建来料检验记录

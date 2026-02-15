@@ -184,6 +184,19 @@ export class SalesDocumentService {
     });
   }
 
+  /** 删除销售单据（仅 DRAFT 状态） */
+  async remove(id: string) {
+    const doc = await this.findOne(id);
+    if (doc.status !== 'DRAFT') {
+      throw new BadRequestException('只有草稿状态的单据可以删除');
+    }
+
+    // 先删除明细行，再删除主单据
+    await this.prisma.salesDocumentItem.deleteMany({ where: { documentId: id } });
+    await this.prisma.salesDocument.delete({ where: { id } });
+    return { success: true };
+  }
+
   /**
    * 单据转换（如报价单 -> 销售订单 -> 出货单 -> 发票）
    * 将源单据的明细复制到新类型单据

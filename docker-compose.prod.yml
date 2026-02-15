@@ -1,0 +1,48 @@
+# ============================================================
+# Jiale ERP 生产部署配置
+# 用法:
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
+# ============================================================
+
+services:
+  # ---- PostgreSQL 数据库 ----
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file: .env.production
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---- NestJS 后端 ----
+  server:
+    image: asdwsxzc123/jiale-erp-server:latest
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    env_file: .env.production
+    environment:
+      # Docker 网络中数据库主机名为 db
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ---- React 前端 (Nginx) ----
+  web:
+    image: asdwsxzc123/jiale-erp-web:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+
+volumes:
+  pgdata:

@@ -72,6 +72,31 @@ export class InspectionService {
     });
   }
 
+  /** 更新检验记录（仅 PENDING 状态可编辑） */
+  async update(id: string, dto: Partial<CreateInspectionDto>) {
+    const inspection = await this.findOne(id);
+    if (inspection.status !== 'PENDING') {
+      throw new BadRequestException('只有待检状态的记录可以编辑');
+    }
+
+    const updateData: any = { ...dto };
+    // 日期字段转换
+    if (updateData.inspectionDate) {
+      updateData.inspectionDate = new Date(updateData.inspectionDate);
+    }
+    if (updateData.handlingMethod) {
+      updateData.handlingMethod = updateData.handlingMethod as any;
+    }
+
+    return this.prisma.incomingInspection.update({
+      where: { id },
+      data: updateData,
+      include: {
+        supplier: { select: { code: true, companyName: true } },
+      },
+    });
+  }
+
   /**
    * 检验合格 - 生成 RawMaterialBatch + 溯源码 RM-YYYYMMDD-XXX
    */

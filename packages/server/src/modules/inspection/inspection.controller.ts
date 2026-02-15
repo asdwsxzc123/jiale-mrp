@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post,
+  Controller, Get, Post, Put,
   Body, Param, Query, UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
@@ -49,6 +49,13 @@ export class InspectionController {
   @ApiOperation({ summary: '创建来料检验记录' })
   async create(@Body() dto: CreateInspectionDto) {
     return this.inspectionService.create(dto);
+  }
+
+  /** 更新检验记录（仅 PENDING 状态可编辑） */
+  @Put(':id')
+  @ApiOperation({ summary: '更新检验记录' })
+  async update(@Param('id') id: string, @Body() dto: CreateInspectionDto) {
+    return this.inspectionService.update(id, dto);
   }
 
   /** 检验合格 -> 生成原材料批次 + 溯源码 */

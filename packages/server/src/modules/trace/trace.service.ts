@@ -8,6 +8,66 @@ import { PrismaService } from '../prisma/prisma.service.js';
 export class TraceService {
   constructor(private prisma: PrismaService) {}
 
+  /** 分页查询原材料批次列表 */
+  async findAllBatches(query: {
+    page?: number;
+    pageSize?: number;
+    status?: string;
+    supplierId?: string;
+    itemId?: string;
+  }) {
+    const page = query.page || 1;
+    const pageSize = query.pageSize || 20;
+    const skip = (page - 1) * pageSize;
+
+    const where: any = {};
+    if (query.status) where.status = query.status;
+    if (query.supplierId) where.supplierId = query.supplierId;
+    if (query.itemId) where.itemId = query.itemId;
+
+    const [data, total] = await Promise.all([
+      this.prisma.rawMaterialBatch.findMany({
+        where,
+        skip,
+        take: pageSize,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          item: { select: { id: true, code: true, description: true } },
+          supplier: { select: { id: true, code: true, companyName: true } },
+          warehouseLocation: { select: { id: true, name: true } },
+        },
+      }),
+      this.prisma.rawMaterialBatch.count({ where }),
+    ]);
+
+    return { data, total, page, pageSize };
+  }
+
+  /** 查询原材料批次详情 */
+  async findOneBatch(id: string) {
+    const batch = await this.prisma.rawMaterialBatch.findUnique({
+      where: { id },
+      include: {
+        item: { select: { id: true, code: true, description: true } },
+        supplier: { select: { id: true, code: true, companyName: true } },
+        purchaseDoc: { select: { id: true, docNo: true, type: true, date: true } },
+        inspection: {
+          select: {
+            id: true,
+            status: true,
+            inspectionDate: true,
+            wrongItem: true,
+            weightDifference: true,
+          },
+        },
+        warehouseLocation: { select: { id: true, name: true } },
+      },
+    });
+
+    if (!batch) throw new NotFoundException(`原材料批次不存在`);
+    return batch;
+  }
+
   /**
    * 查询原材料批次溯源信息
    * 包含：批次信息、关联物料、供应商、采购单据、检验记录

@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Put, Delete,
-  Body, Param, Query, UseGuards,
+  Body, Param, Query, UseGuards, NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard.js';
@@ -91,6 +91,37 @@ export class CustomerPaymentController {
       });
 
       return payment;
+    });
+  }
+
+  /** 更新客户收款记录 */
+  @Put(':id')
+  @ApiOperation({ summary: '更新客户收款记录' })
+  async update(@Param('id') id: string, @Body() dto: Partial<CreateCustomerPaymentDto>) {
+    const existing = await this.prisma.customerPayment.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('收款记录不存在');
+
+    return this.prisma.$transaction(async (tx) => {
+      // 如果金额变化，调整客户应收余额
+      if (dto.amount !== undefined && dto.amount !== Number(existing.amount)) {
+        const diff = Number(existing.amount) - dto.amount;
+        await tx.customer.update({
+          where: { id: existing.customerId },
+          data: { outstandingAmount: { increment: diff } },
+        });
+      }
+
+      const updateData: any = { ...dto };
+      if (updateData.date) updateData.date = new Date(updateData.date);
+      if (updateData.currency) updateData.currency = updateData.currency as any;
+      // customerId 不允许修改
+      delete updateData.customerId;
+
+      return tx.customerPayment.update({
+        where: { id },
+        data: updateData,
+        include: { customer: { select: { code: true, companyName: true } } },
+      });
     });
   }
 

@@ -54,7 +54,7 @@ export interface SalesDocument {
 
 /** 查询销售单据列表 */
 export async function getSalesDocuments(params?: Record<string, unknown>) {
-  const res = await api.get('/sales-documents', { params });
+  const res = await api.get('/sales/documents', { params });
   return res.data;
 }
 
@@ -66,7 +66,7 @@ export async function getSalesDocument(id: string) {
 
 /** 创建销售单据 */
 export async function createSalesDocument(data: Partial<SalesDocument>) {
-  const res = await api.post('/sales-documents', data);
+  const res = await api.post('/sales/documents', data);
   return res.data;
 }
 
@@ -98,7 +98,7 @@ export interface CustomerPayment {
 }
 
 export async function getCustomerPayments(params?: Record<string, unknown>) {
-  const res = await api.get('/customer-payments', { params });
+  const res = await api.get('/sales/payments', { params });
   return res.data;
 }
 
@@ -108,7 +108,7 @@ export async function getCustomerPayment(id: string) {
 }
 
 export async function createCustomerPayment(data: Partial<CustomerPayment>) {
-  const res = await api.post('/customer-payments', data);
+  const res = await api.post('/sales/payments', data);
   return res.data;
 }
 

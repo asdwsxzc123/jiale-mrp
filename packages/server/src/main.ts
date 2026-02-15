@@ -1,3 +1,11 @@
+import { config } from 'dotenv';
+import { resolve } from 'path';
+
+// 加载 monorepo 根目录 .env（pnpm --filter 从 packages/server 运行，cwd = packages/server）
+config({ path: resolve(process.cwd(), '../../.env') });
+// 兜底：也尝试当前目录的 .env（从根目录运行或 Docker 环境）
+config();
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
@@ -35,7 +43,7 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   // 启动服务
-  const port = process.env.PORT ?? 3000;
+  const port = process.env.PORT ?? 3100;
   await app.listen(port);
   console.log(`Server running on http://localhost:${port}`);
   console.log(`Swagger docs: http://localhost:${port}/api/docs`);

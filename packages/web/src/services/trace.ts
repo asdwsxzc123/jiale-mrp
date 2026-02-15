@@ -45,7 +45,7 @@ export interface TraceResultData {
 
 /** 根据溯源码查询 */
 export async function traceByCode(code: string) {
-  const res = await api.get(`/trace/${code}`);
+  const res = await api.get(`/trace/scan/${code}`);
   return res.data as TraceResultData;
 }
 
@@ -71,7 +71,7 @@ export interface RawMaterialBatch {
 
 /** 查询原材料批次列表 */
 export async function getRawMaterialBatches(params?: Record<string, unknown>) {
-  const res = await api.get('/raw-material-batches', { params });
+  const res = await api.get('/trace/raw-material-batches', { params });
   return res.data;
 }
 

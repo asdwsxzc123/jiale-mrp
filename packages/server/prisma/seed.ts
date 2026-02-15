@@ -1,7 +1,14 @@
 import { PrismaClient, Role, CurrencyCode } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 import * as bcrypt from 'bcrypt';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
 
-const prisma = new PrismaClient();
+// 加载项目根目录的 .env 文件
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   // 创建默认管理员用户（密码从环境变量读取，不硬编码）

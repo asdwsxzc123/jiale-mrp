@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Put,
+  Controller, Get, Post, Put, Delete,
   Body, Param, Query, UseGuards, Request,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
@@ -54,6 +54,13 @@ export class JobOrderController {
   @ApiOperation({ summary: '更新工单' })
   async update(@Param('id') id: string, @Body() dto: CreateJobOrderDto) {
     return this.jobOrderService.update(id, dto);
+  }
+
+  /** 删除工单（仅 PLANNED 状态可删除） */
+  @Delete(':id')
+  @ApiOperation({ summary: '删除工单（仅 PLANNED 状态）' })
+  async remove(@Param('id') id: string) {
+    return this.jobOrderService.remove(id);
   }
 
   /** 领料 */

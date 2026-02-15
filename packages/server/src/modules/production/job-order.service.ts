@@ -96,6 +96,19 @@ export class JobOrderService {
     });
   }
 
+  /** 删除工单（仅 PLANNED 状态可删除） */
+  async remove(id: string) {
+    const order = await this.findOne(id);
+    if (order.status !== 'PLANNED') {
+      throw new BadRequestException('只有计划状态的工单可以删除');
+    }
+
+    // 先删除物料明细，再删除工单
+    await this.prisma.jobOrderMaterial.deleteMany({ where: { jobOrderId: id } });
+    await this.prisma.jobOrder.delete({ where: { id } });
+    return { success: true };
+  }
+
   /**
    * 领料 - 更新工单物料的已领数量，并扣减原材料批次余量
    */
