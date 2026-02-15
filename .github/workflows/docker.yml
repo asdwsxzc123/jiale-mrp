@@ -6,7 +6,7 @@
 #   3. 手动触发 (workflow_dispatch)
 # ============================================================
 
-name: Build and Push Docker Images
+name: Build and Push Docker Image
 
 on:
   push:
@@ -20,9 +20,7 @@ on:
         default: ""
 
 env:
-  DOCKER_USER: asdwsxzc123
-  SERVER_IMAGE: asdwsxzc123/jiale-erp-server
-  WEB_IMAGE: asdwsxzc123/jiale-erp-web
+  IMAGE_NAME: asdwsxzc123/jiale-erp
 
 jobs:
   build-and-push:
@@ -38,13 +36,10 @@ jobs:
         id: tag
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.tag }}" ]; then
-            # 手动触发且指定了标签
             echo "version=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
           elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            # git tag 触发，提取版本号
             echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           else
-            # 分支推送，使用 latest
             echo "version=latest" >> $GITHUB_OUTPUT
           fi
 
@@ -59,29 +54,16 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # ---- 构建并推送 Server 镜像 ----
-      - name: Build and push Server image
+      # ---- 构建并推送镜像 ----
+      - name: Build and push image
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: packages/server/Dockerfile
+          file: Dockerfile
           push: true
           tags: |
-            ${{ env.SERVER_IMAGE }}:${{ steps.tag.outputs.version }}
-            ${{ env.SERVER_IMAGE }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      # ---- 构建并推送 Web 镜像 ----
-      - name: Build and push Web image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: packages/web/Dockerfile
-          push: true
-          tags: |
-            ${{ env.WEB_IMAGE }}:${{ steps.tag.outputs.version }}
-            ${{ env.WEB_IMAGE }}:latest
+            ${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.version }}
+            ${{ env.IMAGE_NAME }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -89,7 +71,5 @@ jobs:
       - name: Print image info
         run: |
           echo "========================================"
-          echo " 镜像构建并推送完成"
-          echo " Server: ${{ env.SERVER_IMAGE }}:${{ steps.tag.outputs.version }}"
-          echo " Web:    ${{ env.WEB_IMAGE }}:${{ steps.tag.outputs.version }}"
+          echo " 镜像推送完成: ${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.version }}"
           echo "========================================"

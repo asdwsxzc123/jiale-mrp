@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { PrismaModule } from './modules/prisma/prisma.module.js';
@@ -19,6 +21,12 @@ import { SettingsModule } from './modules/settings/settings.module.js';
  */
 @Module({
   imports: [
+    // 托管前端静态资源（SPA 模式，未匹配路由回退到 index.html）
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'public'),
+      exclude: ['/api/(.*)'],
+    }),
+
     // 基础设施模块
     PrismaModule,     // 数据库访问（全局）
     CommonModule,     // 公共服务（全局）
