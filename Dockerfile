@@ -4,7 +4,7 @@
 # Build context 为项目根目录
 # ============================================================
 
-# ---- 阶段 1: 安装依赖 ----
+# ---- 阶段 1: 安装全量依赖（用于编译） ----
 FROM node:20-alpine AS deps
 WORKDIR /app
 
@@ -37,17 +37,23 @@ WORKDIR /app
 
 RUN npm install -g pnpm
 
-# 拷贝 workspace 配置，安装生产依赖
+# 拷贝 workspace 配置，安装全量依赖（prisma generate 需要 prisma CLI）
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY packages/server/package.json ./packages/server/package.json
 COPY packages/web/package.json ./packages/web/package.json
 
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --frozen-lockfile
+
+# 拷贝 prisma schema 并生成客户端（必须在 install 之后、dist 拷贝之前）
+COPY --from=server-builder /app/packages/server/prisma ./packages/server/prisma
+COPY --from=server-builder /app/packages/server/prisma.config.ts ./packages/server/prisma.config.ts
+RUN cd packages/server && npx prisma generate
+
+# 裁剪为生产依赖，减小镜像体积（CI=true 避免 TTY 交互提示）
+RUN CI=true pnpm prune --prod
 
 # 拷贝后端编译产物
 COPY --from=server-builder /app/packages/server/dist ./packages/server/dist
-COPY --from=server-builder /app/packages/server/prisma ./packages/server/prisma
-COPY --from=server-builder /app/packages/server/prisma.config.ts ./packages/server/prisma.config.ts
 
 # 拷贝前端静态资源到 server/public（与 ServeStaticModule 配置对应）
 COPY --from=web-builder /app/packages/web/dist ./packages/server/public
