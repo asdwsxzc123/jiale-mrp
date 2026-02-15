@@ -34,7 +34,7 @@ if ! docker info 2>/dev/null | grep -q "Username"; then
 fi
 echo "  ✓ Docker 已登录"
 
-# ---- Step 2: 构建镜像 ----
+# ---- Step 2: 构建镜像（context 为项目根目录） ----
 echo ""
 echo "[2/4] 构建 Docker 镜像..."
 
@@ -43,14 +43,14 @@ docker build \
   -t "${SERVER_IMAGE}:${TAG}" \
   -t "${SERVER_IMAGE}:latest" \
   -f "${ROOT_DIR}/packages/server/Dockerfile" \
-  "${ROOT_DIR}/packages/server"
+  "${ROOT_DIR}"
 
 echo "  → 构建 web 镜像..."
 docker build \
   -t "${WEB_IMAGE}:${TAG}" \
   -t "${WEB_IMAGE}:latest" \
   -f "${ROOT_DIR}/packages/web/Dockerfile" \
-  "${ROOT_DIR}/packages/web"
+  "${ROOT_DIR}"
 
 echo "  ✓ 镜像构建完成"
 
@@ -83,5 +83,6 @@ echo "    docker compose -f docker-compose.prod.yml up -d"
 echo ""
 echo " 3. 首次部署需要初始化数据库:"
 echo "    docker compose -f docker-compose.prod.yml exec server npx prisma migrate deploy"
+echo "    docker compose -f docker-compose.prod.yml exec server npx prisma db seed"
 echo ""
 echo "========================================"
