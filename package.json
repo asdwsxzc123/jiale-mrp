@@ -1,0 +1,13 @@
+{
+  "name": "jiale-erp",
+  "private": true,
+  "scripts": {
+    "dev:server": "pnpm --filter server dev",
+    "dev:web": "pnpm --filter web dev",
+    "dev": "concurrently \"pnpm run dev:server\" \"pnpm run dev:web\"",
+    "build": "pnpm --filter server build && pnpm --filter web build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
