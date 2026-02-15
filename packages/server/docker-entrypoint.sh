@@ -12,7 +12,7 @@ NEEDS_SEED=$(node prisma/check-seed.js)
 
 if [ "$NEEDS_SEED" = "yes" ]; then
   echo "首次初始化，执行 seed..."
-  npx prisma db seed
+  node prisma/seed.js
 else
   echo "数据库已初始化，跳过 seed"
 fi
