@@ -26,7 +26,7 @@ services:
     image: asdwsxzc123/jiale-erp:latest
     restart: unless-stopped
     ports:
-      - "80:3100"
+      - "3100:3100"
     env_file: .env
     depends_on:
       db:
