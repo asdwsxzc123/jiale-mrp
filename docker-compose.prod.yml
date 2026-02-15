@@ -28,6 +28,12 @@ services:
     ports:
       - "3100:3100"
     env_file: .env
+    environment:
+      # env_file 不支持变量插值，需要通过 environment 显式组装 DATABASE_URL
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    volumes:
+      # 将宿主机 .env 映射到容器内，确保应用运行时可读取配置
+      - ./.env:/app/packages/server/.env:ro
     depends_on:
       db:
         condition: service_healthy
