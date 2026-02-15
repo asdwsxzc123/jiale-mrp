@@ -5,7 +5,7 @@ cd /app/packages/server
 
 # 每次启动：同步表结构（幂等，只应用差异）
 echo "Syncing database schema..."
-npx prisma db push --skip-generate
+npx prisma db push
 
 # 判断是否首次初始化：用 pg 直接查 users 表行数
 NEEDS_SEED=$(node -e "
