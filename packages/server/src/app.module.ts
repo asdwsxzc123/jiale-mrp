@@ -24,7 +24,7 @@ import { SettingsModule } from './modules/settings/settings.module.js';
     // 托管前端静态资源（SPA 模式，未匹配路由回退到 index.html）
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),
-      exclude: ['/api/(.*)'],
+      exclude: ['/api/{*path}'],
     }),
 
     // 基础设施模块
