@@ -90,21 +90,27 @@ mkdir -p "${INSTALL_DIR}/data"
 cd "${INSTALL_DIR}"
 
 # ---- Step 3: 判断首次安装还是更新 ----
-# 通过 data 目录是否有内容来判断是否首次安装
+# 通过 data 目录是否有 PG 数据文件来判断
 IS_FIRST_INSTALL=true
 if [ -d "data/base" ]; then
   IS_FIRST_INSTALL=false
   info "检测到已有数据库数据，进入更新模式"
 fi
 
-# ---- Step 4: 下载 docker-compose.yml ----
+# ---- Step 4: 停止旧容器（更新模式） ----
+if [ "$IS_FIRST_INSTALL" = false ] && [ -f "docker-compose.yml" ]; then
+  info "停止旧服务..."
+  docker compose down 2>/dev/null || true
+fi
+
+# ---- Step 5: 下载 docker-compose.yml ----
 # 每次都更新 compose 文件，确保配置最新
 info "下载 docker-compose.yml..."
 curl -fsSL "${COMPOSE_URL}" -o docker-compose.yml.tmp
 mv docker-compose.yml.tmp docker-compose.yml
 info "docker-compose.yml 已更新 ✓"
 
-# ---- Step 5: 生成环境配置 ----
+# ---- Step 6: 生成环境配置 ----
 if [ -f ".env" ]; then
   warn ".env 已存在，跳过生成（如需重新配置请删除后重新运行）"
 else
@@ -139,14 +145,14 @@ EOF
   info ".env 已生成 ✓"
 fi
 
-# ---- Step 6: 拉取镜像并启动 ----
+# ---- Step 7: 拉取镜像并启动 ----
 info "拉取 Docker 镜像..."
 docker compose pull
 
 info "启动服务..."
 docker compose up -d
 
-# ---- Step 7: 等待数据库就绪 ----
+# ---- Step 8: 等待数据库就绪 ----
 info "等待数据库就绪..."
 RETRIES=30
 until docker compose exec -T db pg_isready -U "${DB_USER}" &> /dev/null; do
@@ -158,7 +164,19 @@ until docker compose exec -T db pg_isready -U "${DB_USER}" &> /dev/null; do
 done
 info "数据库就绪 ✓"
 
-# ---- Step 8: 初始化数据库（仅首次安装） ----
+# ---- Step 9: 等待应用容器就绪 ----
+info "等待应用容器就绪..."
+RETRIES=30
+until docker compose exec -T app echo "ready" &> /dev/null; do
+  RETRIES=$((RETRIES - 1))
+  if [ $RETRIES -le 0 ]; then
+    error "应用容器启动超时，请检查日志: docker compose logs app"
+  fi
+  sleep 2
+done
+info "应用容器就绪 ✓"
+
+# ---- Step 10: 初始化数据库 ----
 info "执行数据库迁移..."
 docker compose exec -T app npx prisma migrate deploy
 
