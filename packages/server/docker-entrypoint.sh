@@ -7,15 +7,8 @@ cd /app/packages/server
 echo "Syncing database schema..."
 npx prisma db push
 
-# 判断是否首次初始化：用 pg 直接查 users 表行数
-NEEDS_SEED=$(node -e "
-  const pg = require('pg');
-  const c = new pg.Client(process.env.DATABASE_URL);
-  c.connect()
-    .then(() => c.query('SELECT COUNT(*) FROM users'))
-    .then(r => { console.log(r.rows[0].count === '0' ? 'yes' : 'no'); c.end(); })
-    .catch(() => { console.log('yes'); c.end(); });
-")
+# 判断是否首次初始化：检查 users 表是否有数据
+NEEDS_SEED=$(node prisma/check-seed.js)
 
 if [ "$NEEDS_SEED" = "yes" ]; then
   echo "首次初始化，执行 seed..."
