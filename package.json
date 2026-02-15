@@ -10,5 +10,14 @@
   "devDependencies": {
     "concurrently": "^9.0.0"
   },
-  "dependencies": {}
+  "dependencies": {},
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "bcrypt",
+      "prisma",
+      "@prisma/engines",
+      "@prisma/client",
+      "esbuild"
+    ]
+  }
 }
