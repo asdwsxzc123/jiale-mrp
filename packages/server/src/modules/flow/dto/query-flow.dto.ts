@@ -25,13 +25,11 @@ export class QueryFlowDto {
   @IsString()
   stockItemId?: string;
 
-  @ApiPropertyOptional({ description: '页码', default: '1' })
+  @ApiPropertyOptional({ description: '页码', default: 1 })
   @IsOptional()
-  @IsString()
-  page?: string;
+  page?: number | string;
 
-  @ApiPropertyOptional({ description: '每页条数', default: '20' })
+  @ApiPropertyOptional({ description: '每页条数', default: 20 })
   @IsOptional()
-  @IsString()
-  pageSize?: string;
+  pageSize?: number | string;
 }

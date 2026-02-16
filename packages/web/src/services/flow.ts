@@ -147,11 +147,12 @@ export async function exportYieldRate(params?: FlowQuery) {
 
 /**
  * 下载导出的 Excel 文件
- * 通过创建隐藏 <a> 标签触发浏览器下载
+ * 通过 URL 参数传递 JWT token 鉴权（浏览器 <a> 标签无法携带 header）
  */
 export function downloadExportFile(filename: string) {
+  const token = localStorage.getItem('token') || '';
   const link = document.createElement('a');
-  link.href = `/api/flow/download/${filename}`;
+  link.href = `/api/flow/download/${filename}?token=${encodeURIComponent(token)}`;
   link.download = filename;
   document.body.appendChild(link);
   link.click();
