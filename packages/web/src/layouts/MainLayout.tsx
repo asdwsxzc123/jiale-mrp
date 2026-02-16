@@ -107,6 +107,7 @@ const menuData: MenuDataItem[] = [
       { name: '货币', path: '/settings/currency' },
       { name: '税码', path: '/settings/tax' },
       { name: '用户管理', path: '/settings/users' },
+      { name: '系统升级', path: '/settings/upgrade' },
     ],
   },
 ];
