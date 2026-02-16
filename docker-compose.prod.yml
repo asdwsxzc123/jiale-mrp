@@ -34,6 +34,10 @@ services:
     volumes:
       # 将宿主机 .env 映射到容器内，确保应用运行时可读取配置
       - ./.env:/app/packages/server/.env:ro
+      # 挂载 Docker socket，允许容器内执行 docker 命令（用于一键升级）
+      - /var/run/docker.sock:/var/run/docker.sock
+      # 挂载 compose 项目目录，让容器内 docker compose 能读取配置
+      - .:/deploy:ro
     depends_on:
       db:
         condition: service_healthy

@@ -47,6 +47,7 @@ import YieldRateList from '../pages/flow/YieldRateList';
 import CurrencySettings from '../pages/settings/CurrencySettings';
 import TaxCodeSettings from '../pages/settings/TaxCodeSettings';
 import UserManagement from '../pages/settings/UserManagement';
+import SystemUpgrade from '../pages/settings/SystemUpgrade';
 
 /** 路由守卫组件：未登录则跳转 /login */
 function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -115,6 +116,7 @@ const router = createBrowserRouter([
       { path: 'settings/currency', element: <CurrencySettings /> },
       { path: 'settings/tax', element: <TaxCodeSettings /> },
       { path: 'settings/users', element: <UserManagement /> },
+      { path: 'settings/upgrade', element: <SystemUpgrade /> },
     ],
   },
 ]);

@@ -35,6 +35,9 @@ RUN cd packages/server && npx prisma generate && pnpm run build
 FROM node:20-alpine
 WORKDIR /app
 
+# 安装 docker CLI 和 compose 插件（用于页面一键升级）
+RUN apk add --no-cache docker-cli docker-cli-compose
+
 RUN npm install -g pnpm
 
 # 拷贝 workspace 配置，安装全量依赖（prisma generate 需要 prisma CLI）
@@ -60,6 +63,10 @@ WORKDIR /app/packages/server
 # 拷贝 entrypoint 脚本（启动时自动同步表结构 + 首次初始化 seed）
 COPY packages/server/docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
+
+# 版本标签（构建时通过 --build-arg VERSION=x.x.x 传入，或自动读取 package.json）
+ARG VERSION=0.0.1
+LABEL version=${VERSION}
 
 EXPOSE 3100
 ENTRYPOINT ["./docker-entrypoint.sh"]
