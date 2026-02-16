@@ -39,6 +39,10 @@ import FinishedProductDetail from '../pages/production/FinishedProductDetail';
 import TraceScan from '../pages/trace/TraceScan';
 import TraceResult from '../pages/trace/TraceResult';
 import RawMaterialBatchList from '../pages/trace/RawMaterialBatchList';
+/* ---- 流水管理 ---- */
+import InboundFlowList from '../pages/flow/InboundFlowList';
+import OutboundFlowList from '../pages/flow/OutboundFlowList';
+import YieldRateList from '../pages/flow/YieldRateList';
 /* ---- 系统设置 ---- */
 import CurrencySettings from '../pages/settings/CurrencySettings';
 import TaxCodeSettings from '../pages/settings/TaxCodeSettings';
@@ -99,6 +103,10 @@ const router = createBrowserRouter([
       { path: 'trace/scan', element: <TraceScan /> },
       { path: 'trace/result/:code', element: <TraceResult /> },
       { path: 'trace/batches', element: <RawMaterialBatchList /> },
+      /* 流水管理 */
+      { path: 'flow/inbound', element: <InboundFlowList /> },
+      { path: 'flow/outbound', element: <OutboundFlowList /> },
+      { path: 'flow/yield-rate', element: <YieldRateList /> },
       /* 客户管理 */
       { path: 'customers', element: <CustomerList /> },
       /* 供应商管理 */
