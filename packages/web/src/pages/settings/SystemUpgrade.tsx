@@ -147,6 +147,14 @@ export default function SystemUpgrade() {
             '-'
           )}
         </Descriptions.Item>
+        {/* 有版本号时显示最新版本行 */}
+        {updateInfo?.latest && (
+          <Descriptions.Item label="最新版本">
+            <Tag color={updateInfo.hasUpdate ? 'green' : 'default'}>
+              v{updateInfo.latest}
+            </Tag>
+          </Descriptions.Item>
+        )}
         <Descriptions.Item label="更新状态">
           {checking ? (
             <><LoadingOutlined /> 检查中...</>

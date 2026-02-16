@@ -12,8 +12,15 @@ import { Roles } from '../../guards/roles.decorator.js';
 /** compose 文件路径（挂载到容器内的 /deploy 目录） */
 const COMPOSE_FILE = '/deploy/docker-compose.prod.yml';
 
+/** GitHub 仓库（用于查询 Release 版本） */
+const GITHUB_REPO = process.env.GITHUB_REPO || 'asdwsxzc123/jiale-mrp';
+
 /** Docker 镜像全名 */
 const DOCKER_IMAGE = process.env.DOCKER_IMAGE || 'asdwsxzc123/jiale-erp';
+
+/** 版本缓存（避免频繁请求 GitHub API） */
+let versionCache: { latest: string; checkedAt: number } | null = null;
+const CACHE_TTL = 10 * 60 * 1000; // 10 分钟
 
 /** 读取 package.json 中的当前版本号 */
 function getCurrentVersion(): string {
@@ -29,47 +36,80 @@ function getCurrentVersion(): string {
 /** 封装 exec 为 Promise */
 function run(cmd: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    exec(cmd, (err, stdout, stderr) => {
+    exec(cmd, { timeout: 15000 }, (err, stdout, stderr) => {
       if (err) return reject(new Error(stderr || err.message));
       resolve(stdout.trim());
     });
   });
 }
 
+/** 比较两个 semver 版本号，返回 1 / 0 / -1 */
+function compareVersions(a: string, b: string): number {
+  const pa = a.replace(/^v/, '').split('.').map(Number);
+  const pb = b.replace(/^v/, '').split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] || 0) > (pb[i] || 0)) return 1;
+    if ((pa[i] || 0) < (pb[i] || 0)) return -1;
+  }
+  return 0;
+}
+
 /**
- * 通过 Docker CLI 对比本地与远端镜像 digest，判断是否有更新
- * Docker CLI 走宿主机 Docker daemon 网络，不受容器网络限制
+ * 方案 1：通过 GitHub Release API 获取最新版本号
+ * 容器内网络可能不通，所以走 Docker 宿主机网络执行 curl
+ */
+async function fetchLatestFromGitHub(): Promise<string | null> {
+  // 命中缓存
+  if (versionCache && Date.now() - versionCache.checkedAt < CACHE_TTL) {
+    return versionCache.latest;
+  }
+
+  try {
+    // 通过 docker run --network host 走宿主机网络，绕过容器网络限制
+    const url = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
+    const raw = await run(
+      `docker run --rm --network host node:20-alpine node -e "fetch('${url}',{headers:{'User-Agent':'jiale-erp'}}).then(r=>r.json()).then(d=>console.log(d.tag_name||''))"`,
+    );
+    const tag = raw.trim();
+    if (!tag) return null;
+
+    // 去掉 v 前缀
+    const version = tag.replace(/^v/, '');
+    versionCache = { latest: version, checkedAt: Date.now() };
+    return version;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 方案 2（降级）：通过 Docker CLI 对比本地与远端镜像 digest
+ * 无法获取版本号，只能判断有无更新
  */
 async function checkRemoteDigest(): Promise<{ hasUpdate: boolean; error?: string }> {
   const image = `${DOCKER_IMAGE}:latest`;
 
   try {
-    // 获取本地镜像 digest（格式：repo@sha256:xxx）
+    // 获取本地镜像 digest
     const localRepoDigest = await run(
       `docker image inspect ${image} --format '{{index .RepoDigests 0}}'`,
     );
-    // 提取 sha256 部分
     const localDigest = localRepoDigest.split('@')[1] || '';
 
-    // 获取远端 manifest digest（不会拉取镜像，只查询元数据）
+    // 获取远端 manifest digest（不拉取镜像，只查询元数据）
     const manifestRaw = await run(`docker manifest inspect ${image} 2>/dev/null`);
     const manifest = JSON.parse(manifestRaw);
 
-    // manifest list 格式（多架构）或单架构格式
-    // 取 config.digest 或 manifests[0].digest 都可以用于对比
-    let remoteDigest = '';
     if (manifest.config?.digest) {
       // 单架构 manifest
-      remoteDigest = manifest.config.digest;
+      return { hasUpdate: manifest.config.digest !== localDigest };
     } else if (manifest.manifests?.length) {
-      // 多架构 manifest list - 取整体 digest 无法直接比，改为对比完整 manifest 内容
-      // 如果本地 digest 不在 manifests 的任何一项中，说明有更新
-      const manifestDigests = manifest.manifests.map((m: { digest: string }) => m.digest);
-      const hasMatch = manifestDigests.some((d: string) => d === localDigest);
-      return { hasUpdate: !hasMatch };
+      // 多架构 manifest list
+      const digests = manifest.manifests.map((m: { digest: string }) => m.digest);
+      return { hasUpdate: !digests.some((d: string) => d === localDigest) };
     }
 
-    return { hasUpdate: remoteDigest !== '' && remoteDigest !== localDigest };
+    return { hasUpdate: false };
   } catch (e) {
     return { hasUpdate: false, error: (e as Error).message };
   }
@@ -102,21 +142,32 @@ export class SystemController {
   }
 
   /**
-   * 检查更新 - 通过 Docker CLI 对比本地和远端镜像 digest
-   * 返回当前版本、是否有更新
+   * 检查更新
+   * 优先通过 GitHub Release API 获取最新版本号
+   * 降级方案：Docker CLI 对比镜像 digest
    */
   @Get('check-update')
   @ApiOperation({ summary: '检查是否有新版本' })
   async checkUpdate() {
     const current = getCurrentVersion();
-    const result = await checkRemoteDigest();
 
-    if (result.error) {
-      this.logger.warn(`检查更新失败: ${result.error}`);
-      return { current, latest: null, hasUpdate: false, error: '无法检查远端镜像' };
+    // 方案 1：GitHub Release API（能拿到版本号）
+    const latest = await fetchLatestFromGitHub();
+    if (latest) {
+      const hasUpdate = compareVersions(latest, current) > 0;
+      return { current, latest, hasUpdate };
     }
 
-    return { current, latest: null, hasUpdate: result.hasUpdate };
+    // 方案 2：Docker digest 对比（降级，只能判断有无更新）
+    this.logger.warn('GitHub API 不可用，降级为 Docker digest 对比');
+    const digestResult = await checkRemoteDigest();
+
+    if (digestResult.error) {
+      this.logger.warn(`digest 对比也失败: ${digestResult.error}`);
+      return { current, latest: null, hasUpdate: false, error: '无法检查更新' };
+    }
+
+    return { current, latest: null, hasUpdate: digestResult.hasUpdate };
   }
 
   /**
