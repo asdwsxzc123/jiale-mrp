@@ -67,9 +67,19 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # ---- 创建 GitHub Release（仅 tag 触发时） ----
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.version }}
+          name: ${{ steps.tag.outputs.version }}
+          generate_release_notes: true
+
       # ---- 输出结果 ----
       - name: Print image info
         run: |
           echo "========================================"
           echo " 镜像推送完成: ${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.version }}"
+          echo " GitHub Release: ${{ steps.tag.outputs.version }}"
           echo "========================================"
