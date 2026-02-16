@@ -147,25 +147,14 @@ export default function SystemUpgrade() {
             '-'
           )}
         </Descriptions.Item>
-        <Descriptions.Item label="最新版本">
+        <Descriptions.Item label="更新状态">
           {checking ? (
-            <LoadingOutlined />
-          ) : updateInfo?.latest ? (
-            <Tag color={updateInfo.hasUpdate ? 'green' : 'default'}>
-              v{updateInfo.latest}
-            </Tag>
+            <><LoadingOutlined /> 检查中...</>
           ) : updateInfo?.error ? (
             <Typography.Text type="warning">{updateInfo.error}</Typography.Text>
-          ) : (
-            '-'
-          )}
-        </Descriptions.Item>
-        <Descriptions.Item label="状态">
-          {checking ? (
-            '检查中...'
           ) : updateInfo?.hasUpdate ? (
             <Tag color="green">有新版本可用</Tag>
-          ) : updateInfo && !updateInfo.error ? (
+          ) : updateInfo ? (
             <Tag>已是最新版本</Tag>
           ) : (
             '-'

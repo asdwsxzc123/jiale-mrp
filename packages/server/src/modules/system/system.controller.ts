@@ -12,7 +12,7 @@ import { Roles } from '../../guards/roles.decorator.js';
 /** compose 文件路径（挂载到容器内的 /deploy 目录） */
 const COMPOSE_FILE = '/deploy/docker-compose.prod.yml';
 
-/** Docker Hub 镜像名（用于查询远端版本） */
+/** Docker 镜像全名 */
 const DOCKER_IMAGE = process.env.DOCKER_IMAGE || 'asdwsxzc123/jiale-erp';
 
 /** 读取 package.json 中的当前版本号 */
@@ -26,36 +26,52 @@ function getCurrentVersion(): string {
   }
 }
 
+/** 封装 exec 为 Promise */
+function run(cmd: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    exec(cmd, (err, stdout, stderr) => {
+      if (err) return reject(new Error(stderr || err.message));
+      resolve(stdout.trim());
+    });
+  });
+}
+
 /**
- * 查询 Docker Hub tags API，获取最新版本号
- * 接口：GET https://hub.docker.com/v2/repositories/{image}/tags?page_size=100&ordering=-name
- * 从返回的 tag 列表中筛选 semver 格式的标签，取最大值
+ * 通过 Docker CLI 对比本地与远端镜像 digest，判断是否有更新
+ * Docker CLI 走宿主机 Docker daemon 网络，不受容器网络限制
  */
-async function fetchLatestVersion(): Promise<string | null> {
+async function checkRemoteDigest(): Promise<{ hasUpdate: boolean; error?: string }> {
+  const image = `${DOCKER_IMAGE}:latest`;
+
   try {
-    const url = `https://hub.docker.com/v2/repositories/${DOCKER_IMAGE}/tags?page_size=100&ordering=-name`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
+    // 获取本地镜像 digest（格式：repo@sha256:xxx）
+    const localRepoDigest = await run(
+      `docker image inspect ${image} --format '{{index .RepoDigests 0}}'`,
+    );
+    // 提取 sha256 部分
+    const localDigest = localRepoDigest.split('@')[1] || '';
 
-    const data = await res.json();
-    const semverRegex = /^\d+\.\d+\.\d+$/;
+    // 获取远端 manifest digest（不会拉取镜像，只查询元数据）
+    const manifestRaw = await run(`docker manifest inspect ${image} 2>/dev/null`);
+    const manifest = JSON.parse(manifestRaw);
 
-    // 筛选 semver 格式的 tag，按版本号降序排列
-    const versions = (data.results || [])
-      .map((t: { name: string }) => t.name)
-      .filter((name: string) => semverRegex.test(name))
-      .sort((a: string, b: string) => {
-        const pa = a.split('.').map(Number);
-        const pb = b.split('.').map(Number);
-        for (let i = 0; i < 3; i++) {
-          if (pa[i] !== pb[i]) return pb[i] - pa[i];
-        }
-        return 0;
-      });
+    // manifest list 格式（多架构）或单架构格式
+    // 取 config.digest 或 manifests[0].digest 都可以用于对比
+    let remoteDigest = '';
+    if (manifest.config?.digest) {
+      // 单架构 manifest
+      remoteDigest = manifest.config.digest;
+    } else if (manifest.manifests?.length) {
+      // 多架构 manifest list - 取整体 digest 无法直接比，改为对比完整 manifest 内容
+      // 如果本地 digest 不在 manifests 的任何一项中，说明有更新
+      const manifestDigests = manifest.manifests.map((m: { digest: string }) => m.digest);
+      const hasMatch = manifestDigests.some((d: string) => d === localDigest);
+      return { hasUpdate: !hasMatch };
+    }
 
-    return versions[0] || null;
-  } catch {
-    return null;
+    return { hasUpdate: remoteDigest !== '' && remoteDigest !== localDigest };
+  } catch (e) {
+    return { hasUpdate: false, error: (e as Error).message };
   }
 }
 
@@ -86,23 +102,21 @@ export class SystemController {
   }
 
   /**
-   * 检查更新 - 对比当前版本与 Docker Hub 上的最新版本
-   * 返回当前版本、最新版本、是否有更新
+   * 检查更新 - 通过 Docker CLI 对比本地和远端镜像 digest
+   * 返回当前版本、是否有更新
    */
   @Get('check-update')
   @ApiOperation({ summary: '检查是否有新版本' })
   async checkUpdate() {
     const current = getCurrentVersion();
-    const latest = await fetchLatestVersion();
+    const result = await checkRemoteDigest();
 
-    // 无法获取远端版本时，返回未知状态
-    if (!latest) {
-      return { current, latest: null, hasUpdate: false, error: '无法连接 Docker Hub' };
+    if (result.error) {
+      this.logger.warn(`检查更新失败: ${result.error}`);
+      return { current, latest: null, hasUpdate: false, error: '无法检查远端镜像' };
     }
 
-    // 比较版本号：latest > current 则有更新
-    const hasUpdate = this.compareVersions(latest, current) > 0;
-    return { current, latest, hasUpdate };
+    return { current, latest: null, hasUpdate: result.hasUpdate };
   }
 
   /**
@@ -140,16 +154,5 @@ export class SystemController {
     });
 
     return { message: '升级已触发，系统将在数秒后重启' };
-  }
-
-  /** 比较两个 semver 版本号，返回 1 / 0 / -1 */
-  private compareVersions(a: string, b: string): number {
-    const pa = a.split('.').map(Number);
-    const pb = b.split('.').map(Number);
-    for (let i = 0; i < 3; i++) {
-      if (pa[i] > pb[i]) return 1;
-      if (pa[i] < pb[i]) return -1;
-    }
-    return 0;
   }
 }
