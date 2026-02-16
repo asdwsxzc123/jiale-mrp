@@ -63,6 +63,9 @@ model Customer {
   debitNotes        CustomerDebitNote[]
   creditNotes       CustomerCreditNote[]
   refunds           CustomerRefund[]
+  inboundFlows    InboundFlow[]
+  outboundFlows   OutboundFlow[]
+  yieldRates      YieldRate[]
 
   @@map("customers")
 }
@@ -204,6 +207,9 @@ model StockItem {
   balances           StockBalance[]
   rawMaterialBatches RawMaterialBatch[]
   finishedProducts   FinishedProduct[]
+  inboundFlows     InboundFlow[]  @relation("InboundFlowItem")
+  outboundFlows    OutboundFlow[] @relation("OutboundFlowItem")
+  yieldRates       YieldRate[]    @relation("YieldRateItem")
 
   @@map("stock_items")
 }
@@ -810,4 +816,80 @@ model DocNumberSequence {
   format     String @default("{prefix}-{number:5}")
 
   @@map("doc_number_sequences")
+}
+
+// ==================== 流水记录 ====================
+
+model InboundFlow {
+  id           String   @id @default(uuid())
+  date         DateTime @db.Date                                  // 日期
+  serialNo     String?  @map("serial_no")                         // 序号
+  containerNo  String?  @map("container_no")                      // 柜号/车号
+  itemName     String   @map("item_name")                         // 货名
+  billWeight   Decimal? @map("bill_weight") @db.Decimal(15, 4)    // 提单重量
+  actualWeight Decimal? @map("actual_weight") @db.Decimal(15, 4)  // 实际重量
+  location     String?                                            // 仓库位置
+  totalWeight  Decimal? @map("total_weight") @db.Decimal(15, 4)   // 实际总重
+  remark       String?                                            // 备注
+  weightDiff   Decimal? @map("weight_diff") @db.Decimal(15, 4)    // 重差
+  customerId   String?  @map("customer_id")                       // 关联客户
+  stockItemId  String?  @map("stock_item_id")                     // 关联材料
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  customer  Customer?  @relation(fields: [customerId], references: [id])
+  stockItem StockItem? @relation("InboundFlowItem", fields: [stockItemId], references: [id])
+
+  @@map("inbound_flows")
+}
+
+model OutboundFlow {
+  id           String   @id @default(uuid())
+  date         DateTime @db.Date                                  // 日期
+  serialNo     String?  @map("serial_no")                         // 序号
+  belonging    String?                                            // 归属
+  containerNo  String?  @map("container_no")                      // 柜号
+  itemName     String   @map("item_name")                         // 品名
+  weight       Decimal? @db.Decimal(15, 4)                        // 重量
+  packageCount Int?     @map("package_count")                     // 包数
+  totalWeight  Decimal? @map("total_weight") @db.Decimal(15, 4)   // 总重
+  remark       String?                                            // 备注
+  customerId   String?  @map("customer_id")                       // 关联客户
+  stockItemId  String?  @map("stock_item_id")                     // 关联材料
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  customer  Customer?  @relation(fields: [customerId], references: [id])
+  stockItem StockItem? @relation("OutboundFlowItem", fields: [stockItemId], references: [id])
+
+  @@map("outbound_flows")
+}
+
+model YieldRate {
+  id              String   @id @default(uuid())
+  date            DateTime @db.Date                                    // 日期
+  itemName        String   @map("item_name")                           // 货名
+  containerNo     String?  @map("container_no")                        // 柜号/车号
+  incomingWeight  Decimal? @map("incoming_weight") @db.Decimal(15, 4)  // 来货重量
+  step            String?                                              // 步骤
+  pelletName      String?  @map("pellet_name")                         // 颗粒名称
+  weight          Decimal? @db.Decimal(15, 4)                          // 重量
+  colorMaster     Decimal? @map("color_master") @db.Decimal(15, 4)     // 色母
+  spaceBag        Decimal? @map("space_bag") @db.Decimal(15, 4)        // 太空袋
+  misc            Decimal? @db.Decimal(15, 4)                          // 杂料
+  glueHeadMisc    Decimal? @map("glue_head_misc") @db.Decimal(15, 4)   // 胶头/杂料
+  waste           Decimal? @db.Decimal(15, 4)                          // 垃圾
+  pallet          Decimal? @db.Decimal(15, 4)                          // 卡板
+  totalWeight     Decimal? @map("total_weight") @db.Decimal(15, 4)     // 总重量
+  yieldRateVal    Decimal? @map("yield_rate_val") @db.Decimal(10, 4)   // 出成率
+  remark          String?                                              // 备注
+  customerId      String?  @map("customer_id")                         // 关联客户
+  stockItemId     String?  @map("stock_item_id")                       // 关联材料
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  customer  Customer?  @relation(fields: [customerId], references: [id])
+  stockItem StockItem? @relation("YieldRateItem", fields: [stockItemId], references: [id])
+
+  @@map("yield_rates")
 }

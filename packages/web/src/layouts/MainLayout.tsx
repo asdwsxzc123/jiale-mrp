@@ -16,6 +16,7 @@ import {
   TeamOutlined,
   TruckOutlined,
   SettingOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 import { Dropdown, Button } from 'antd';
 import { LogoutOutlined } from '@ant-design/icons';
@@ -76,6 +77,16 @@ const menuData: MenuDataItem[] = [
     children: [
       { name: '扫码查询', path: '/trace/scan' },
       { name: '原材料批次', path: '/trace/batches' },
+    ],
+  },
+  {
+    name: '流水管理',
+    path: '/flow',
+    icon: <FileTextOutlined />,
+    children: [
+      { name: '入库流水', path: '/flow/inbound' },
+      { name: '出库流水', path: '/flow/outbound' },
+      { name: '出成率', path: '/flow/yield-rate' },
     ],
   },
   {

@@ -15,6 +15,7 @@ import { InspectionModule } from './modules/inspection/inspection.module.js';
 import { ProductionModule } from './modules/production/production.module.js';
 import { TraceModule } from './modules/trace/trace.module.js';
 import { SettingsModule } from './modules/settings/settings.module.js';
+import { FlowModule } from './modules/flow/flow.module.js';
 
 /**
  * 根模块 - 导入所有业务模块
@@ -44,6 +45,7 @@ import { SettingsModule } from './modules/settings/settings.module.js';
 
     // 系统设置
     SettingsModule,   // 货币、税码、用户管理
+    FlowModule,       // 流水管理 + 导出
   ],
   controllers: [AppController],
   providers: [AppService],
